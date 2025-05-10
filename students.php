@@ -1,8 +1,140 @@
 // Back-end CRUD functions, >>Omar's job<<
 
+<?php
+require_once 'conn.php';
 
+// Initialize variables
+$name = $email = $phone = $address = $dob = $gender = $enrollment_date = $graduation_date = $status = $major = '';
+$error = '';
+$success = '';
 
+// CRUD Operations
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Create Student
+    if (isset($_POST['add_student'])) {
+        $name = $_POST['name'];
+        $email = $_POST['email'];
+        $phone = $_POST['phone'];
+        $address = $_POST['address'];
+        $dob = $_POST['dob'];
+        $gender = $_POST['gender'];
+        $enrollment_date = $_POST['enrollment_date'];
+        $graduation_date = $_POST['graduation_date'];
+        $status = $_POST['status'];
+        $major = $_POST['major'];
 
+        if (empty($name) || empty($email) || empty($major)) {
+            $error = 'Name, email and major are required!';
+        } else {
+            $stmt = $conn->prepare("INSERT INTO student (first_name, last_name, email, phone_number, address, date_of_birth, gender, enrollment_date, expected_graduation, status, major_department_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            
+            // Split name into first and last
+            $name_parts = explode(' ', $name, 2);
+            $first_name = $name_parts[0];
+            $last_name = isset($name_parts[1]) ? $name_parts[1] : '';
+            
+            $stmt->bind_param("sssssssssss", $first_name, $last_name, $email, $phone, $address, $dob, $gender, $enrollment_date, $graduation_date, $status, $major);
+            
+            if ($stmt->execute()) {
+                $success = 'Student added successfully!';
+                // Clear form
+                $name = $email = $phone = $address = $dob = $gender = $enrollment_date = $graduation_date = $status = $major = '';
+            } else {
+                $error = 'Error adding student: ' . $conn->error;
+            }
+            $stmt->close();
+        }
+    }
+
+    // Update Student
+    if (isset($_POST['update_student'])) {
+        $id = $_POST['id'];
+        $name = $_POST['name'];
+        $email = $_POST['email'];
+        $phone = $_POST['phone'];
+        $address = $_POST['address'];
+        $dob = $_POST['dob'];
+        $gender = $_POST['gender'];
+        $enrollment_date = $_POST['enrollment_date'];
+        $graduation_date = $_POST['graduation_date'];
+        $status = $_POST['status'];
+        $major = $_POST['major'];
+
+        if (empty($name) || empty($email) || empty($major)) {
+            $error = 'Name, email and major are required!';
+        } else {
+            // Split name into first and last
+            $name_parts = explode(' ', $name, 2);
+            $first_name = $name_parts[0];
+            $last_name = isset($name_parts[1]) ? $name_parts[1] : '';
+            
+            $stmt = $conn->prepare("UPDATE student SET first_name=?, last_name=?, email=?, phone_number=?, address=?, date_of_birth=?, gender=?, enrollment_date=?, expected_graduation=?, status=?, major_department_id=? WHERE student_id=?");
+            $stmt->bind_param("sssssssssssi", $first_name, $last_name, $email, $phone, $address, $dob, $gender, $enrollment_date, $graduation_date, $status, $major, $id);
+            
+            if ($stmt->execute()) {
+                $success = 'Student updated successfully!';
+            } else {
+                $error = 'Error updating student: ' . $conn->error;
+            }
+            $stmt->close();
+        }
+    }
+}
+
+// Delete Student
+if (isset($_GET['delete'])) {
+    $id = $_GET['delete'];
+    $stmt = $conn->prepare("DELETE FROM student WHERE student_id=?");
+    $stmt->bind_param("i", $id);
+    
+    if ($stmt->execute()) {
+        $success = 'Student deleted successfully!';
+    } else {
+        $error = 'Error deleting student: ' . $conn->error;
+    }
+    $stmt->close();
+}
+
+// Get Student for editing
+if (isset($_GET['edit'])) {
+    $id = $_GET['edit'];
+    $stmt = $conn->prepare("SELECT * FROM student WHERE student_id=?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $student = $result->fetch_assoc();
+    $stmt->close();
+    
+    if ($student) {
+        $name = $student['first_name'] . ' ' . $student['last_name'];
+        $email = $student['email'];
+        $phone = $student['phone_number'];
+        $address = $student['address'];
+        $dob = $student['date_of_birth'];
+        $gender = $student['gender'];
+        $enrollment_date = $student['enrollment_date'];
+        $graduation_date = $student['expected_graduation'];
+        $status = $student['status'];
+        $major = $student['major_department_id'];
+    }
+}
+
+// Get all students
+$students = [];
+$stmt = $conn->prepare("SELECT s.*, d.department_name FROM student s JOIN department d ON s.major_department_id = d.department_id ORDER BY s.last_name, s.first_name");
+$stmt->execute();
+$result = $stmt->get_result();
+$students = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+
+// Get all departments for dropdown
+$departments = [];
+$stmt = $conn->prepare("SELECT * FROM department ORDER BY department_name");
+$stmt->execute();
+$result = $stmt->get_result();
+$departments = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+?>
 
 
 
